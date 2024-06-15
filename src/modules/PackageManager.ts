@@ -140,7 +140,7 @@ export class PackageManager implements IPackageManager {
 
             p.stdout.on('data', (data: string) => {
                 this.output.appendLine(data);
-                out = data;
+                out = out + data;
             });
 
             p.stderr.on('data', (data: string) => {
@@ -210,9 +210,9 @@ export class PackageManager implements IPackageManager {
 
     private tryParsePipListJson(packages: string) {
         try {
-            return JSON.parse(packages);
-        } catch {
-            throw new Error('Get package failed, please run "pip list --format json" or "pip3 list --format json" check pip support json format');
+            return JSON.parse(packages.replace(/\n/g, ""));
+        } catch(e) {
+            throw new Error(`Get package failed, please run "pip list --format json" or "pip3 list --format json" check pip support json format: ${e}`);
         }
     }
 
