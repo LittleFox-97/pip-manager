@@ -42,7 +42,6 @@ if you like this extension, please star [in github](https://github.com/slightc/p
 * install package from requirements.txt
 * can select used python source
 
-
 ## Requirements
 
 must be installed Python Extension (ms-python.python)
@@ -77,6 +76,5 @@ Add open package description in pypi
 ### 1.0.0
 
 Initial release of Pip Manager
-
 
 **Enjoy!**
