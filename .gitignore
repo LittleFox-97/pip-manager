@@ -5,3 +5,4 @@ node_modules
 *.vsix
 .yarn/
 .DS_Store
+.vscode/
