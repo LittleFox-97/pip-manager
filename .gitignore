@@ -6,3 +6,5 @@ node_modules
 .yarn/
 .DS_Store
 .vscode/
+pnpm-lock.yaml
+Get-ProjectStructure.ps1
