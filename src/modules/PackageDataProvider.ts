@@ -1,89 +1,90 @@
-import { createDecorator, InstantiationService, ServiceCollection } from '@/common/ioc';
-import * as vscode from 'vscode';
-import { IPackageManager, PackageVersionInfo } from './PackageManager';
+import type { PackageVersionInfo } from './PackageManager'
+import type { InstantiationService, ServiceCollection } from '@/common/ioc'
+import * as vscode from 'vscode'
+import { createDecorator } from '@/common/ioc'
+import { IPackageManager } from './PackageManager'
 
 export class PackageDataItem extends vscode.TreeItem {
-    public name: string;
-    public version?: string;
-    constructor(
-        public readonly info: PackageVersionInfo,
-        public readonly collapsibleState?: vscode.TreeItemCollapsibleState
-    ) {
-        super(info.name, collapsibleState);
-        const canUpdate = (info.latestVersion && info.latestVersion !== info.version);
-        this.name = info.name;
-        this.version = info.version;
-        this.description = canUpdate ? `${info.version} > ${info.latestVersion}` : info.version;
-        this.iconPath = new vscode.ThemeIcon('circle-outline');
-        this.tooltip = `${this.name}@${this.description}`;
-        this.contextValue = canUpdate ? 'canUpdate' : '';
-    }
+  public name: string
+  public version?: string
+  constructor(
+    public readonly info: PackageVersionInfo,
+    public readonly collapsibleState?: vscode.TreeItemCollapsibleState,
+  ) {
+    super(info.name, collapsibleState)
+    const canUpdate = (info.latestVersion && info.latestVersion !== info.version)
+    this.name = info.name
+    this.version = info.version
+    this.description = canUpdate ? `${info.version} > ${info.latestVersion}` : info.version
+    this.iconPath = new vscode.ThemeIcon('circle-outline')
+    this.tooltip = `${this.name}@${this.description}`
+    this.contextValue = canUpdate ? 'canUpdate' : ''
+  }
 }
 
 interface IPackageDataProvider extends vscode.TreeDataProvider<PackageDataItem> {
-    refresh(): void;
+  refresh(): void
 };
-const IPackageDataProvider = createDecorator<IPackageDataProvider>('packageDataProvider');
+const PackageDataProviderDecorator = createDecorator<IPackageDataProvider>('packageDataProvider')
 
 export class PackageDataProvider implements IPackageDataProvider {
-    private isFristUpdate: boolean = true;
-    private nextUpdateTimer: NodeJS.Timeout | undefined;
-    private packageList: PackageVersionInfo[] = [];
-    private packageUpdateList: PackageVersionInfo[] = [];
-    constructor(
-        @IPackageManager private readonly pip: IPackageManager
-    ) { }
+  private isFristUpdate: boolean = true
+  private nextUpdateTimer: NodeJS.Timeout | undefined
+  private packageList: PackageVersionInfo[] = []
+  private packageUpdateList: PackageVersionInfo[] = []
+  constructor(
+    @IPackageManager private readonly pip: IPackageManager,
+  ) { }
 
-    static Create(instantiation: InstantiationService, service?: ServiceCollection) {
-        const instance = instantiation.createInstance<IPackageDataProvider>(this);
-        if (service) {
-            service.set(IPackageDataProvider, instance);
-        }
-        return instance;
+  static Create(instantiation: InstantiationService, service?: ServiceCollection) {
+    const instance = instantiation.createInstance<IPackageDataProvider>(this)
+    if (service) {
+      service.set(PackageDataProviderDecorator, instance)
     }
+    return instance
+  }
 
-    getTreeItem(element: PackageDataItem): vscode.TreeItem {
-        return element;
+  getTreeItem(element: PackageDataItem): vscode.TreeItem {
+    return element
+  }
+
+  requireNextUpdate() {
+    this.isFristUpdate = false
+    if (this.nextUpdateTimer) {
+      clearTimeout(this.nextUpdateTimer)
     }
+    this.nextUpdateTimer = setTimeout(() => {
+      this._onDidChangeTreeData.fire()
+    }, 100)
+  }
 
-    requireNextUpdate() {
-        this.isFristUpdate = false;
-        if(this.nextUpdateTimer){
-            clearTimeout(this.nextUpdateTimer);
-        }
-        this.nextUpdateTimer = setTimeout(() => {
-            this._onDidChangeTreeData.fire();
-        }, 100);
+  async getChildren(element?: PackageDataItem): Promise<PackageDataItem[]> {
+    if (element) {
+      return Promise.resolve([])
     }
-
-    async getChildren(element?: PackageDataItem): Promise<PackageDataItem[]> {
-        if(element){
-            return Promise.resolve([]);
-        }else{
-            if(this.isFristUpdate){
-                this.packageList = await this.pip.getPackageList();
-                /** async fetch update info */
-                this.pip.getPackageUpdate().then((updateInfo) => {
-                    this.packageUpdateList = updateInfo;
-                }).finally(() => {
-                    this.requireNextUpdate();
-                });
-            }else{
-                this.isFristUpdate = true;
-            }
-            const packList = this.pip.mergePackageListWithUpdate(this.packageList, this.packageUpdateList);
-            const datalist = packList.map((info) => {
-                return new PackageDataItem(info);
-            });
-            return Promise.resolve(datalist);
-        }
+    if (this.isFristUpdate) {
+      this.packageList = await this.pip.getPackageList()
+      /** async fetch update info */
+      await this.pip.getPackageUpdate().then((updateInfo) => {
+        this.packageUpdateList = updateInfo
+      }).finally(() => {
+        this.requireNextUpdate()
+      })
+    } else {
+      this.isFristUpdate = true
     }
+    const packList = this.pip.mergePackageListWithUpdate(this.packageList, this.packageUpdateList)
+    const datalist = packList.map((info) => {
+      return new PackageDataItem(info)
+    })
+    return Promise.resolve(datalist)
+  }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<PackageDataItem | undefined | null | void> = new vscode.EventEmitter<PackageDataItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<PackageDataItem | undefined | null | void> = this._onDidChangeTreeData.event;
+  private _onDidChangeTreeData: vscode.EventEmitter<PackageDataItem | undefined | null | void> = new vscode.EventEmitter<PackageDataItem | undefined | null | void>()
+  readonly onDidChangeTreeData: vscode.Event<PackageDataItem | undefined | null | void> = this._onDidChangeTreeData.event
 
-    refresh(): void {
-        this.isFristUpdate = true;
-        this._onDidChangeTreeData.fire();
-    }
+  refresh(): void {
+    this.isFristUpdate = true
+    this._onDidChangeTreeData.fire()
+  }
 }

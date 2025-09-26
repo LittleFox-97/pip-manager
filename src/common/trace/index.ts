@@ -1,7 +1,7 @@
 // import axios from "axios";
 
 class Trace {
-  reportUrl: string = "http://analytics.pip-manager.site/feed";
+  reportUrl: string = 'http://analytics.pip-manager.site/feed'
 
   openView() {
     // const url = this.reportUrl + "?u=/openView";
@@ -9,6 +9,6 @@ class Trace {
   }
 }
 
-const trace = new Trace();
+const trace = new Trace()
 
-export default trace;
+export default trace
